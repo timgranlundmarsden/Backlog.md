@@ -14,6 +14,15 @@ import { getVersion } from "../utils/version.ts";
 const PREFIX_PATTERN = /^[a-zA-Z]+-/i;
 const DEFAULT_PREFIX = "task-";
 
+/** Returns true if the two ref maps differ in any key or value. */
+function remoteSyncRefsChanged(prev: Map<string, string>, next: Map<string, string>): boolean {
+	if (prev.size !== next.size) return true;
+	for (const [ref, hash] of next) {
+		if (prev.get(ref) !== hash) return true;
+	}
+	return false;
+}
+
 /**
  * Strip any prefix from an ID (e.g., "task-123" -> "123", "JIRA-456" -> "456")
  */
@@ -83,6 +92,7 @@ export class BacklogServer {
 	private storeReadyBroadcasted = false;
 	private configWatcher: { stop: () => void } | null = null;
 	private remoteSyncTimer: ReturnType<typeof setInterval> | null = null;
+	private lastKnownRemoteRefs: Map<string, string> = new Map();
 
 	constructor(projectPath: string) {
 		this.core = new Core(projectPath, { enableWatchers: true });
@@ -491,6 +501,10 @@ export class BacklogServer {
 		const intervalMs = Math.max(5, intervalSec) * 1000;
 		this.remoteSyncTimer = setInterval(async () => {
 			try {
+				// Cheap pre-check: only do a full fetch + reindex if remote refs changed
+				const currentRefs = await this.core.git.lsRemote();
+				if (!remoteSyncRefsChanged(this.lastKnownRemoteRefs, currentRefs)) return;
+				this.lastKnownRemoteRefs = currentRefs;
 				const store = await this.getContentStoreInstance();
 				await store.reloadTasks();
 			} catch {
@@ -504,6 +518,7 @@ export class BacklogServer {
 			clearInterval(this.remoteSyncTimer);
 			this.remoteSyncTimer = null;
 		}
+		this.lastKnownRemoteRefs = new Map();
 	}
 
 	private _stopping = false;
