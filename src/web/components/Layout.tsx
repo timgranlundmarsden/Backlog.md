@@ -13,17 +13,19 @@ interface LayoutProps {
 	decisions: Decision[];
 	isLoading: boolean;
 	onRefreshData: () => Promise<void>;
+	syncing?: boolean;
 }
 
-export default function Layout({ 
-	projectName, 
-	showSuccessToast, 
-	onDismissToast, 
-	tasks, 
-	docs, 
-	decisions, 
-	isLoading, 
-	onRefreshData 
+export default function Layout({
+	projectName,
+	showSuccessToast,
+	onDismissToast,
+	tasks,
+	docs,
+	decisions,
+	isLoading,
+	onRefreshData,
+	syncing,
 }: LayoutProps) {
 	return (
 		<div className="h-screen bg-gray-50 dark:bg-gray-900 flex overflow-hidden transition-colors duration-200">
@@ -36,7 +38,7 @@ export default function Layout({
 				onRefreshData={onRefreshData}
 			/>
 			<div className="flex-1 flex flex-col min-h-0 min-w-0">
-				<Navigation projectName={projectName} />
+				<Navigation projectName={projectName} syncing={syncing} />
 				<main className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden">
 					<Outlet context={{ tasks, docs, decisions, isLoading, onRefreshData }} />
 				</main>

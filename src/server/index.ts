@@ -265,20 +265,20 @@ export class BacklogServer {
 		return this.server?.port ?? null;
 	}
 
-	private broadcastTasksUpdated() {
+	private broadcastMessage(msg: string): void {
 		for (const ws of this.sockets) {
 			try {
-				ws.send("tasks-updated");
+				ws.send(msg);
 			} catch {}
 		}
 	}
 
+	private broadcastTasksUpdated() {
+		this.broadcastMessage("tasks-updated");
+	}
+
 	private broadcastConfigUpdated() {
-		for (const ws of this.sockets) {
-			try {
-				ws.send("config-updated");
-			} catch {}
-		}
+		this.broadcastMessage("config-updated");
 	}
 
 	async start(port?: number, openBrowser = true): Promise<void> {
@@ -501,10 +501,13 @@ export class BacklogServer {
 		const intervalMs = Math.max(5, intervalSec) * 1000;
 		this.remoteSyncTimer = setInterval(async () => {
 			try {
-				// Cheap pre-check: only do a full fetch + reindex if remote refs changed
+				this.broadcastMessage("remote-sync");
+				// Cheap pre-check: only skip if we got actual refs back AND they haven't changed.
+				// If lsRemote returns empty (network error, SSH issue, etc.) fall through to the
+				// full reload so transient failures don't permanently suppress updates.
 				const currentRefs = await this.core.git.lsRemote();
-				if (!remoteSyncRefsChanged(this.lastKnownRemoteRefs, currentRefs)) return;
-				this.lastKnownRemoteRefs = currentRefs;
+				if (currentRefs.size > 0 && !remoteSyncRefsChanged(this.lastKnownRemoteRefs, currentRefs)) return;
+				if (currentRefs.size > 0) this.lastKnownRemoteRefs = currentRefs;
 				const store = await this.getContentStoreInstance();
 				await store.reloadTasks();
 			} catch {

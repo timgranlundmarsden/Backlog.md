@@ -3,9 +3,10 @@ import ThemeToggle from './ThemeToggle';
 
 interface NavigationProps {
     projectName: string;
+    syncing?: boolean;
 }
 
-const Navigation: React.FC<NavigationProps> = ({projectName}) => {
+const Navigation: React.FC<NavigationProps> = ({projectName, syncing}) => {
     return (
         <nav className="px-8 h-18 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 transition-colors duration-200">
             <div className="h-full flex items-center justify-between">
@@ -21,7 +22,15 @@ const Navigation: React.FC<NavigationProps> = ({projectName}) => {
                         Backlog.md
                     </a>
                 </div>
-                <ThemeToggle />
+                <div className="flex items-center gap-2">
+                    {syncing && (
+                        <div
+                            className="w-2 h-2 rounded-full bg-green-500 animate-sync-ping"
+                            title="Checking remote for updates..."
+                        />
+                    )}
+                    <ThemeToggle />
+                </div>
             </div>
         </nav>
     );

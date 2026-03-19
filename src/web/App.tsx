@@ -172,6 +172,7 @@ function App() {
   const [milestoneEntities, setMilestoneEntities] = useState<Milestone[]>([]);
   const [archivedMilestones, setArchivedMilestones] = useState<Milestone[]>([]);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [taskConfirmation, setTaskConfirmation] = useState<{task: Task, isDraft: boolean} | null>(null);
   
   // Initialization state
@@ -405,6 +406,9 @@ function App() {
       } else if (event.data === "config-updated") {
         // Reload statuses when config changes
         loadAllData();
+      } else if (event.data === "remote-sync") {
+        setSyncing(true);
+        setTimeout(() => setSyncing(false), 1500);
       }
     };
     return () => ws.close();
@@ -485,6 +489,7 @@ function App() {
                 decisions={decisions}
                 isLoading={isLoading}
                 onRefreshData={refreshData}
+                syncing={syncing}
               />
             }
           >

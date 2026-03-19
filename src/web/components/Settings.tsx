@@ -236,6 +236,32 @@ const Settings: React.FC = () => {
 								</label>
 							</div>
 
+							{config.remoteOperations !== false && (
+								<div>
+									<label htmlFor="remoteSyncInterval" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+										Remote Sync Interval
+									</label>
+									<div className="flex items-center gap-3">
+										<input
+											id="remoteSyncInterval"
+											type="range"
+											min="5"
+											max="3600"
+											step="5"
+											value={config.remoteSyncInterval ?? 60}
+											onChange={(e) => handleInputChange('remoteSyncInterval', parseInt(e.target.value))}
+											className="flex-1 accent-blue-500"
+										/>
+										<span className="text-sm text-gray-700 dark:text-gray-300 w-24 text-right">
+											{formatSyncInterval(config.remoteSyncInterval ?? 60)}
+										</span>
+									</div>
+									<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+										How often the browser polls for remote branch changes. Set to 5 s minimum.
+									</p>
+								</div>
+							)}
+
 							<div>
 								<label htmlFor="defaultStatus" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
 									Default Status
@@ -361,31 +387,6 @@ const Settings: React.FC = () => {
 									</div>
 								</label>
 							</div>
-						{config.remoteOperations !== false && (
-							<div>
-								<label htmlFor="remoteSyncInterval" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-									Remote Sync Interval
-								</label>
-								<div className="flex items-center gap-3">
-									<input
-										id="remoteSyncInterval"
-										type="range"
-										min="5"
-										max="3600"
-										step="5"
-										value={config.remoteSyncInterval ?? 60}
-										onChange={(e) => handleInputChange('remoteSyncInterval', parseInt(e.target.value))}
-										className="flex-1 accent-blue-500"
-									/>
-									<span className="text-sm text-gray-700 dark:text-gray-300 w-24 text-right">
-										{formatSyncInterval(config.remoteSyncInterval ?? 60)}
-									</span>
-								</div>
-								<p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-									How often the browser polls for remote branch changes. Set to 5 s minimum.
-								</p>
-							</div>
-						)}
 					</div>
 				</div>
 
