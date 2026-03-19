@@ -30,6 +30,7 @@ Running `backlog config` with no arguments launches the interactive advanced wiz
 | `defaultPort`     | Web UI port        | `6420`                        |
 | `autoOpenBrowser` | Open browser automatically | `true`            |
 | `remoteOperations`| Enable remote git operations | `true`           |
+| `remoteSyncInterval` | Seconds between automatic remote sync in the browser UI (0 = disabled) | `60` |
 | `autoCommit`      | Automatically commit task changes | `false`       |
 | `bypassGitHooks`  | Skip git hooks when committing (uses --no-verify) | `false`       |
 | `zeroPaddedIds`   | Pad all IDs (tasks, docs, etc.) with leading zeros | `(disabled)`  |
@@ -42,6 +43,8 @@ Running `backlog config` with no arguments launches the interactive advanced wiz
 > Editor setup guide: See [Configuring VIM and Neovim as Default Editor](backlog/docs/doc-002%20-%20Configuring-VIM-and-Neovim-as-Default-Editor.md) for configuration tips and troubleshooting interactive editors.
 
 > **Note**: Set `remoteOperations: false` to work offline. This disables git fetch operations and loads tasks from local branches only, useful when working without network connectivity.
+
+> **Remote Sync**: When `remoteOperations` is enabled, the browser UI automatically re-fetches remote branch tasks every `remoteSyncInterval` seconds (default: 60). The interval can be adjusted via the Settings slider in the Web UI, or set to `0` to disable periodic polling. The minimum supported interval is 5 seconds.
 
 > **Git Control**: By default, `autoCommit` is set to `false`, giving you full control over your git history. Task operations will modify files but won't automatically commit changes. Set `autoCommit: true` if you prefer automatic commits for each task operation.
 

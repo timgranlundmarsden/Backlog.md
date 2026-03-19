@@ -897,6 +897,13 @@ export class ContentStore {
 		}
 		return await this.filesystem.listTasks();
 	}
+
+	/** Re-fetches tasks via the task loader (includes git fetch for remote branches) and updates the in-memory cache. */
+	async reloadTasks(): Promise<void> {
+		const tasks = await this.loadTasksWithLoader();
+		this.replaceTasks(tasks);
+		this.notify("ready");
+	}
 }
 
 export type { ContentSnapshot };
