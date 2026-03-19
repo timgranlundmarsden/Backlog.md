@@ -189,6 +189,30 @@ export class GitOperations {
 		return stdout.trim();
 	}
 
+	/**
+	 * Cheaply list remote refs without downloading any objects.
+	 * Returns a Map of ref → commit hash (e.g. "refs/heads/main" → "abc123").
+	 * Much faster than fetch; use this to detect whether a full fetch is needed.
+	 */
+	async lsRemote(remote = "origin"): Promise<Map<string, string>> {
+		if (this.config?.remoteOperations === false) return new Map();
+		if (!(await this.hasAnyRemote())) return new Map();
+		try {
+			const { stdout } = await this.execGit(["ls-remote", "--heads", remote], { readOnly: true });
+			const refs = new Map<string, string>();
+			for (const line of stdout.split("\n").filter(Boolean)) {
+				const tab = line.indexOf("\t");
+				if (tab === -1) continue;
+				const hash = line.slice(0, tab).trim();
+				const ref = line.slice(tab + 1).trim();
+				if (hash && ref) refs.set(ref, hash);
+			}
+			return refs;
+		} catch {
+			return new Map();
+		}
+	}
+
 	async fetch(remote = "origin"): Promise<void> {
 		// Check if remote operations are disabled
 		if (this.config?.remoteOperations === false) {

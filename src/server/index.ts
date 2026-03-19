@@ -6,13 +6,22 @@ import type { ContentStore } from "../core/content-store.ts";
 import { initializeProject } from "../core/init.ts";
 import type { SearchService } from "../core/search-service.ts";
 import { getTaskStatistics } from "../core/statistics.ts";
-import type { SearchPriorityFilter, SearchResultType, Task, TaskUpdateInput } from "../types/index.ts";
+import type { BacklogConfig, SearchPriorityFilter, SearchResultType, Task, TaskUpdateInput } from "../types/index.ts";
 import { watchConfig } from "../utils/config-watcher.ts";
 import { getVersion } from "../utils/version.ts";
 
 // Regex pattern to match any prefix (letters followed by dash)
 const PREFIX_PATTERN = /^[a-zA-Z]+-/i;
 const DEFAULT_PREFIX = "task-";
+
+/** Returns true if the two ref maps differ in any key or value. */
+function remoteSyncRefsChanged(prev: Map<string, string>, next: Map<string, string>): boolean {
+	if (prev.size !== next.size) return true;
+	for (const [ref, hash] of next) {
+		if (prev.get(ref) !== hash) return true;
+	}
+	return false;
+}
 
 /**
  * Strip any prefix from an ID (e.g., "task-123" -> "123", "JIRA-456" -> "456")
@@ -82,6 +91,8 @@ export class BacklogServer {
 	private unsubscribeContentStore?: () => void;
 	private storeReadyBroadcasted = false;
 	private configWatcher: { stop: () => void } | null = null;
+	private remoteSyncTimer: ReturnType<typeof setInterval> | null = null;
+	private lastKnownRemoteRefs: Map<string, string> = new Map();
 
 	constructor(projectPath: string) {
 		this.core = new Core(projectPath, { enableWatchers: true });
@@ -254,20 +265,20 @@ export class BacklogServer {
 		return this.server?.port ?? null;
 	}
 
-	private broadcastTasksUpdated() {
+	private broadcastMessage(msg: string): void {
 		for (const ws of this.sockets) {
 			try {
-				ws.send("tasks-updated");
+				ws.send(msg);
 			} catch {}
 		}
 	}
 
+	private broadcastTasksUpdated() {
+		this.broadcastMessage("tasks-updated");
+	}
+
 	private broadcastConfigUpdated() {
-		for (const ws of this.sockets) {
-			try {
-				ws.send("config-updated");
-			} catch {}
-		}
+		this.broadcastMessage("config-updated");
 	}
 
 	async start(port?: number, openBrowser = true): Promise<void> {
@@ -296,6 +307,7 @@ export class BacklogServer {
 
 		try {
 			await this.ensureServicesReady();
+			this.startRemoteSyncTimer(config);
 			const serveOptions = {
 				port: finalPort,
 				development: process.env.NODE_ENV === "development",
@@ -481,6 +493,37 @@ export class BacklogServer {
 		}
 	}
 
+	private startRemoteSyncTimer(config: BacklogConfig | null): void {
+		this.clearRemoteSyncTimer();
+		if (config?.remoteOperations === false) return;
+		const intervalSec = config?.remoteSyncInterval ?? 60;
+		if (intervalSec <= 0) return;
+		const intervalMs = Math.max(5, intervalSec) * 1000;
+		this.remoteSyncTimer = setInterval(async () => {
+			try {
+				this.broadcastMessage("remote-sync");
+				// Cheap pre-check: only skip if we got actual refs back AND they haven't changed.
+				// If lsRemote returns empty (network error, SSH issue, etc.) fall through to the
+				// full reload so transient failures don't permanently suppress updates.
+				const currentRefs = await this.core.git.lsRemote();
+				if (currentRefs.size > 0 && !remoteSyncRefsChanged(this.lastKnownRemoteRefs, currentRefs)) return;
+				if (currentRefs.size > 0) this.lastKnownRemoteRefs = currentRefs;
+				const store = await this.getContentStoreInstance();
+				await store.reloadTasks();
+			} catch {
+				// Silent — network errors are already handled inside git.fetch()
+			}
+		}, intervalMs);
+	}
+
+	private clearRemoteSyncTimer(): void {
+		if (this.remoteSyncTimer) {
+			clearInterval(this.remoteSyncTimer);
+			this.remoteSyncTimer = null;
+		}
+		this.lastKnownRemoteRefs = new Map();
+	}
+
 	private _stopping = false;
 
 	async stop(): Promise<void> {
@@ -498,6 +541,8 @@ export class BacklogServer {
 			this.configWatcher?.stop();
 			this.configWatcher = null;
 		} catch {}
+
+		this.clearRemoteSyncTimer();
 
 		this.core.disposeSearchService();
 		this.core.disposeContentStore();
@@ -1145,6 +1190,17 @@ export class BacklogServer {
 				return Response.json({ error: "Port must be between 1 and 65535" }, { status: 400 });
 			}
 
+			if (
+				updatedConfig.remoteSyncInterval !== undefined &&
+				updatedConfig.remoteSyncInterval !== 0 &&
+				updatedConfig.remoteSyncInterval < 5
+			) {
+				return Response.json(
+					{ error: "Remote sync interval must be at least 5 seconds (or 0 to disable)" },
+					{ status: 400 },
+				);
+			}
+
 			// Save configuration
 			await this.core.filesystem.saveConfig(updatedConfig);
 
@@ -1152,6 +1208,9 @@ export class BacklogServer {
 			if (updatedConfig.projectName !== this.projectName) {
 				this.projectName = updatedConfig.projectName;
 			}
+
+			// Restart remote sync timer in case interval or remoteOperations changed
+			this.startRemoteSyncTimer(updatedConfig);
 
 			// Notify connected clients so that they refresh configuration-dependent data (e.g., statuses)
 			this.broadcastTasksUpdated();

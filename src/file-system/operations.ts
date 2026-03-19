@@ -1254,6 +1254,9 @@ ${description || `Milestone: ${title}`}`,
 				case "remote_operations":
 					config.remoteOperations = value.toLowerCase() === "true";
 					break;
+				case "remote_sync_interval":
+					config.remoteSyncInterval = Number.parseInt(value, 10);
+					break;
 				case "auto_commit":
 					config.autoCommit = value.toLowerCase() === "true";
 					break;
@@ -1298,6 +1301,7 @@ ${description || `Milestone: ${title}`}`,
 			autoOpenBrowser: config.autoOpenBrowser,
 			defaultPort: config.defaultPort,
 			remoteOperations: config.remoteOperations,
+			remoteSyncInterval: config.remoteSyncInterval,
 			autoCommit: config.autoCommit,
 			zeroPaddedIds: config.zeroPaddedIds,
 			bypassGitHooks: config.bypassGitHooks,
@@ -1327,6 +1331,7 @@ ${description || `Milestone: ${title}`}`,
 			...(typeof config.autoOpenBrowser === "boolean" ? [`auto_open_browser: ${config.autoOpenBrowser}`] : []),
 			...(config.defaultPort ? [`default_port: ${config.defaultPort}`] : []),
 			...(typeof config.remoteOperations === "boolean" ? [`remote_operations: ${config.remoteOperations}`] : []),
+			...(typeof config.remoteSyncInterval === "number" ? [`remote_sync_interval: ${config.remoteSyncInterval}`] : []),
 			...(typeof config.autoCommit === "boolean" ? [`auto_commit: ${config.autoCommit}`] : []),
 			...(typeof config.zeroPaddedIds === "number" ? [`zero_padded_ids: ${config.zeroPaddedIds}`] : []),
 			...(typeof config.bypassGitHooks === "boolean" ? [`bypass_git_hooks: ${config.bypassGitHooks}`] : []),

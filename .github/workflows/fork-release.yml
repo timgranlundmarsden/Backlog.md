@@ -1,0 +1,68 @@
+name: Fork release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build-${{ matrix.bin }}
+    strategy:
+      matrix:
+        include:
+          - target: bun-linux-x64-baseline
+            bin: backlog-linux-x64
+            os: ubuntu-latest
+          - target: bun-linux-arm64
+            bin: backlog-linux-arm64
+            os: ubuntu-latest
+          - target: bun-darwin-x64
+            bin: backlog-darwin-x64
+            os: macos-latest
+          - target: bun-darwin-arm64
+            bin: backlog-darwin-arm64
+            os: macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.3.9
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-${{ matrix.target }}-bun-1.3.9-${{ hashFiles('**/bun.lock') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.target }}-bun-1.3.9-
+      - run: bun install --frozen-lockfile
+      - name: Compile binary
+        run: |
+          mkdir -p dist
+          bun build src/cli.ts --compile --minify \
+            --target=${{ matrix.target }} \
+            --define __EMBEDDED_VERSION__='"fork"' \
+            --outfile=dist/${{ matrix.bin }}
+          chmod +x dist/${{ matrix.bin }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.bin }}
+          path: dist/${{ matrix.bin }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: binaries
+          merge-multiple: true
+      - name: List binaries
+        run: ls -lh binaries/
+      - uses: softprops/action-gh-release@v1
+        with:
+          tag_name: latest
+          name: Latest build
+          prerelease: true
+          files: binaries/*
