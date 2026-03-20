@@ -361,12 +361,9 @@ const Board: React.FC<BoardProps> = ({
         if (branchFilter === '__current') return !!l.isNoBranch;
         return (l.branch ?? "").trim().toLowerCase() === branchFilter.trim().toLowerCase();
       }
-      if (laneMode === 'milestone' && milestoneFilter) {
-        return canonicalizeMilestone(l.milestone) === canonicalMilestoneFilter;
-      }
       return true;
     });
-  }, [laneMode, lanes, tasksByLane, branchFilter, milestoneFilter, canonicalMilestoneFilter]);
+  }, [laneMode, lanes, tasksByLane, branchFilter]);
 
   // Only show lane headers when multiple lanes exist
   const shouldShowLaneHeaders = useMemo(() => {
