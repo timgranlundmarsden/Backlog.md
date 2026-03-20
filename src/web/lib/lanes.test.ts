@@ -4,6 +4,7 @@ import {
 	buildLanes,
 	DEFAULT_LANE_KEY,
 	groupTasksByLaneAndStatus,
+	laneKeyFromBranch,
 	laneKeyFromMilestone,
 	sortTasksForStatus,
 } from "./lanes";
@@ -163,6 +164,66 @@ describe("groupTasksByLaneAndStatus", () => {
 		});
 		expect((grouped.get(laneKeyFromMilestone("m-1"))?.get("To Do") ?? []).map((task) => task.id)).toEqual(["task-1"]);
 		expect((grouped.get(laneKeyFromMilestone("m-2"))?.get("To Do") ?? []).map((task) => task.id) ?? []).toHaveLength(0);
+	});
+});
+
+describe("laneKeyFromBranch", () => {
+	it("produces a key for a branch name", () => {
+		expect(laneKeyFromBranch("feature/abc")).toBe("lane:branch:feature/abc");
+	});
+
+	it("produces the __none key for empty or null branch", () => {
+		expect(laneKeyFromBranch(null)).toBe("lane:branch:__none");
+		expect(laneKeyFromBranch(undefined)).toBe("lane:branch:__none");
+		expect(laneKeyFromBranch("")).toBe("lane:branch:__none");
+	});
+});
+
+describe("buildLanes (branch mode)", () => {
+	it("creates Current branch lane plus one lane per unique branch", () => {
+		const tasks = [
+			makeTask({ id: "task-1", branch: "main" }),
+			makeTask({ id: "task-2", branch: "feature/x" }),
+			makeTask({ id: "task-3" }),
+		];
+		const lanes = buildLanes("branch", tasks, []);
+		expect(lanes.map((l) => l.label)).toEqual(["Current branch", "feature/x", "main"]);
+	});
+
+	it("returns only Current branch lane when no tasks have branches", () => {
+		const tasks = [makeTask({ id: "task-1" }), makeTask({ id: "task-2" })];
+		const lanes = buildLanes("branch", tasks, []);
+		expect(lanes).toHaveLength(1);
+		expect(lanes[0]?.isNoBranch).toBe(true);
+		expect(lanes[0]?.label).toBe("Current branch");
+	});
+
+	it("deduplicates branches case-insensitively", () => {
+		const tasks = [
+			makeTask({ id: "task-1", branch: "Main" }),
+			makeTask({ id: "task-2", branch: "main" }),
+		];
+		const lanes = buildLanes("branch", tasks, []);
+		// Should have Current branch + one branch lane
+		expect(lanes).toHaveLength(2);
+	});
+});
+
+describe("groupTasksByLaneAndStatus (branch mode)", () => {
+	it("routes tasks to correct branch lanes", () => {
+		const tasks = [
+			makeTask({ id: "task-1", status: "To Do", branch: "main" }),
+			makeTask({ id: "task-2", status: "In Progress", branch: "feature/x" }),
+			makeTask({ id: "task-3", status: "To Do" }),
+		];
+		const lanes = buildLanes("branch", tasks, []);
+		const grouped = groupTasksByLaneAndStatus("branch", lanes, ["To Do", "In Progress"], tasks);
+
+		expect((grouped.get(laneKeyFromBranch("main"))?.get("To Do") ?? []).map((t) => t.id)).toEqual(["task-1"]);
+		expect((grouped.get(laneKeyFromBranch("feature/x"))?.get("In Progress") ?? []).map((t) => t.id)).toEqual([
+			"task-2",
+		]);
+		expect((grouped.get(laneKeyFromBranch(null))?.get("To Do") ?? []).map((t) => t.id)).toEqual(["task-3"]);
 	});
 });
 

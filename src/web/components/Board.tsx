@@ -21,6 +21,8 @@ interface BoardProps {
   laneMode: LaneMode;
   onLaneChange: (mode: LaneMode) => void;
   milestoneFilter?: string | null;
+  branchFilter?: string | null;
+  onBranchFilterChange?: (branch: string | null) => void;
 }
 
 const Board: React.FC<BoardProps> = ({
@@ -36,6 +38,8 @@ const Board: React.FC<BoardProps> = ({
   laneMode,
   onLaneChange,
   milestoneFilter,
+  branchFilter,
+  onBranchFilterChange,
 }) => {
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [dragSourceStatus, setDragSourceStatus] = useState<string | null>(null);
@@ -179,11 +183,21 @@ const Board: React.FC<BoardProps> = ({
   };
   const canonicalMilestoneFilter = canonicalizeMilestone(milestoneFilter);
 
-  // Filter tasks by milestone when milestoneFilter is set
+  // Filter tasks by milestone and/or branch
   const filteredTasks = useMemo(() => {
-    if (!milestoneFilter) return tasks;
-    return tasks.filter(task => canonicalizeMilestone(task.milestone) === canonicalMilestoneFilter);
-  }, [tasks, milestoneFilter, canonicalMilestoneFilter, milestoneAliasToCanonical]);
+    let result = tasks;
+    if (milestoneFilter) {
+      result = result.filter(task => canonicalizeMilestone(task.milestone) === canonicalMilestoneFilter);
+    }
+    if (branchFilter) {
+      if (branchFilter === '__current') {
+        result = result.filter(task => !task.branch || task.branch.trim() === '');
+      } else {
+        result = result.filter(task => (task.branch ?? "").trim().toLowerCase() === branchFilter.trim().toLowerCase());
+      }
+    }
+    return result;
+  }, [tasks, milestoneFilter, canonicalMilestoneFilter, milestoneAliasToCanonical, branchFilter]);
 
   // Handle highlighting a task (opening its edit popup)
   useEffect(() => {
@@ -260,6 +274,23 @@ const Board: React.FC<BoardProps> = ({
     });
   }, [tasks, archivedMilestoneIds, milestoneAliasToCanonical]);
 
+  const hasTasksWithBranches = useMemo(
+    () => tasks.some(task => task.branch && task.branch.trim() !== ''),
+    [tasks]
+  );
+
+  const uniqueBranches = useMemo(() => {
+    const set = new Map<string, string>();
+    for (const task of tasks) {
+      const b = (task.branch ?? "").trim();
+      if (b) {
+        const key = b.toLowerCase();
+        if (!set.has(key)) set.set(key, b);
+      }
+    }
+    return Array.from(set.values()).sort();
+  }, [tasks]);
+
   // Use all tasks for lane grouping (for counts and visibility)
   const tasksByLane = useMemo(
     () => groupTasksByLaneAndStatus(laneMode, lanes, statuses, tasks, {
@@ -282,8 +313,8 @@ const Board: React.FC<BoardProps> = ({
   );
 
   const getTasksForLane = (laneKey: string, status: string): Task[] => {
-    // When filtering by milestone, use filtered tasks for display
-    const sourceMap = milestoneFilter ? filteredTasksByLane : tasksByLane;
+    // When filtering by milestone or branch, use filtered tasks for display
+    const sourceMap = (milestoneFilter || branchFilter) ? filteredTasksByLane : tasksByLane;
     const statusMap = sourceMap.get(laneKey);
     if (!statusMap) {
       return [];
@@ -320,35 +351,39 @@ const Board: React.FC<BoardProps> = ({
     return Math.round((done / total) * 100);
   };
 
-  // Filter out empty lanes in milestone mode
+  // Filter out empty lanes in milestone/branch mode
   const visibleLanes = useMemo(() => {
-    if (laneMode !== 'milestone') return lanes;
+    if (laneMode !== 'milestone' && laneMode !== 'branch') return lanes;
     return lanes.filter(l => laneTaskCount(l.key) > 0);
   }, [laneMode, lanes, tasksByLane]);
 
   // Only show lane headers when multiple lanes exist
   const shouldShowLaneHeaders = useMemo(() => {
-    if (laneMode !== 'milestone') return false;
+    if (laneMode !== 'milestone' && laneMode !== 'branch') return false;
     return visibleLanes.length > 1;
   }, [laneMode, visibleLanes]);
 
-  // Determine if a lane should be collapsed (respects milestoneFilter)
-  const isLaneCollapsed = (laneKey: string, laneMilestone?: string): boolean => {
+  // Determine if a lane should be collapsed (respects milestoneFilter/branchFilter)
+  const isLaneCollapsed = (laneKey: string, lane?: typeof lanes[0]): boolean => {
     // If user manually toggled, respect that
     if (collapsedLanes[laneKey] !== undefined) {
       return collapsedLanes[laneKey];
     }
     // When filtering by milestone, collapse all other lanes by default
-    if (milestoneFilter && canonicalizeMilestone(laneMilestone) !== canonicalMilestoneFilter) {
+    if (milestoneFilter && canonicalizeMilestone(lane?.milestone) !== canonicalMilestoneFilter) {
+      return true;
+    }
+    // When filtering by branch, collapse non-matching lanes
+    if (branchFilter && (lane?.branch ?? "").trim().toLowerCase() !== branchFilter.trim().toLowerCase()) {
       return true;
     }
     return false;
   };
 
   const getLaneLabel = (lane: typeof lanes[0]): string => {
-    if (lane.isNoMilestone || !lane.milestone) {
-      return 'Unassigned';
-    }
+    if (lane.isNoBranch) return 'Current branch';
+    if (laneMode === 'branch') return lane.label;
+    if (lane.isNoMilestone || !lane.milestone) return 'Unassigned';
     return lane.label;
   };
 
@@ -409,7 +444,35 @@ const Board: React.FC<BoardProps> = ({
             >
               Milestone
             </button>
+            <button
+              type="button"
+              onClick={() => onLaneChange('branch')}
+              disabled={!hasTasksWithBranches}
+              title={!hasTasksWithBranches ? 'No cross-branch tasks found.' : 'Group tasks by branch'}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+                !hasTasksWithBranches
+                  ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50'
+                  : laneMode === 'branch'
+                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              Branch
+            </button>
           </div>
+          {hasTasksWithBranches && (
+            <select
+              value={branchFilter ?? ''}
+              onChange={(e) => onBranchFilterChange?.(e.target.value || null)}
+              className="px-3 py-1.5 text-sm font-medium rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-colors duration-200"
+            >
+              <option value="">All branches</option>
+              <option value="__current">Current branch</option>
+              {uniqueBranches.map(b => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          )}
         </div>
 	        <button
 	          className="inline-flex items-center px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 dark:focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition-colors duration-200"
@@ -419,12 +482,12 @@ const Board: React.FC<BoardProps> = ({
         </button>
       </div>
 
-      {laneMode === 'milestone' ? (
+      {(laneMode === 'milestone' || laneMode === 'branch') ? (
         <div className="space-y-6">
           {visibleLanes.map((lane) => {
             const taskCount = laneTaskCount(lane.key);
             const progress = getLaneProgress(lane.key);
-            const isCollapsed = isLaneCollapsed(lane.key, lane.milestone);
+            const isCollapsed = isLaneCollapsed(lane.key, lane);
 
             return (
               <div key={lane.key} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/20 overflow-hidden">
@@ -482,7 +545,7 @@ const Board: React.FC<BoardProps> = ({
                             dragSourceStatus={dragSourceStatus}
                             dragSourceLane={dragSourceLane}
                             laneId={lane.key}
-                            targetMilestone={lane.milestone ?? null}
+                            targetMilestone={laneMode === 'milestone' ? (lane.milestone ?? null) : null}
                             onDragStart={({ status: draggedStatus, laneId }) => {
                               setDragSourceStatus(draggedStatus);
                               setDragSourceLane(laneId ?? null);

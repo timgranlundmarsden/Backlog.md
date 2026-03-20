@@ -1,21 +1,29 @@
 import type { Milestone, Task } from "../../types";
 import { getMilestoneLabel, milestoneKey, normalizeMilestoneName } from "../utils/milestones";
 
-export type LaneMode = "none" | "milestone";
+export type LaneMode = "none" | "milestone" | "branch";
 
 export interface LaneDefinition {
 	key: string;
 	label: string;
 	milestone?: string;
+	branch?: string;
 	isNoMilestone?: boolean;
+	isNoBranch?: boolean;
 }
 
 export const DEFAULT_LANE_KEY = "lane:none";
 export const NO_MILESTONE_LABEL = "No milestone";
+export const NO_BRANCH_LABEL = "Current branch";
 
 export const laneKeyFromMilestone = (milestone?: string | null): string => {
 	const key = milestoneKey(milestone);
 	return key.length > 0 ? `lane:milestone:${key}` : "lane:milestone:__none";
+};
+
+export const laneKeyFromBranch = (branch?: string | null): string => {
+	const key = (branch ?? "").trim().toLowerCase();
+	return key.length > 0 ? `lane:branch:${key}` : "lane:branch:__none";
 };
 
 function buildMilestoneAliasMap(
@@ -156,6 +164,27 @@ export function buildLanes(
 	milestoneEntities: Milestone[] = [],
 	options?: { archivedMilestoneIds?: string[]; archivedMilestones?: Milestone[] },
 ): LaneDefinition[] {
+	if (mode === "branch") {
+		const branchSet = new Map<string, string>();
+		for (const task of tasks) {
+			const b = (task.branch ?? "").trim();
+			if (b) {
+				const key = b.toLowerCase();
+				if (!branchSet.has(key)) branchSet.set(key, b);
+			}
+		}
+		const branches = Array.from(branchSet.values()).sort();
+		return [
+			{ key: laneKeyFromBranch(undefined), label: NO_BRANCH_LABEL, isNoBranch: true },
+			...branches.map((b) => ({
+				key: laneKeyFromBranch(b),
+				label: b,
+				branch: b,
+				isNoBranch: false,
+			})),
+		];
+	}
+
 	if (mode !== "milestone") {
 		return [
 			{
@@ -367,7 +396,12 @@ export function groupTasksByLaneAndStatus(
 
 	for (const task of normalizedTasks) {
 		const statusKey = task.status ?? "";
-		const laneKey = mode === "milestone" ? laneKeyFromMilestone(task.milestone) : DEFAULT_LANE_KEY;
+		const laneKey =
+			mode === "milestone"
+				? laneKeyFromMilestone(task.milestone)
+				: mode === "branch"
+					? laneKeyFromBranch(task.branch)
+					: DEFAULT_LANE_KEY;
 		const statusMap = ensureStatusMap(laneKey);
 
 		let bucket = statusMap.get(statusKey);

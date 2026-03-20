@@ -31,6 +31,7 @@ export default function BoardPage({
 	const [highlightTaskId, setHighlightTaskId] = useState<string | null>(null);
 	const [laneMode, setLaneMode] = useState<LaneMode>('none');
 	const [milestoneFilter, setMilestoneFilter] = useState<string | null>(null);
+	const [branchFilter, setBranchFilter] = useState<string | null>(null);
 	const laneStorageKey = 'backlog.board.lane';
 
 	useEffect(() => {
@@ -39,12 +40,14 @@ export default function BoardPage({
 		const paramMilestone = searchParams.get('milestone');
 		const parseLane = (value: string | null): LaneMode | null => {
 			if (value === 'milestone') return 'milestone';
+			if (value === 'branch') return 'branch';
 			if (value === 'none') return 'none';
 			return null;
 		};
 		const nextLane = parseLane(paramLane) ?? parseLane(storedLane) ?? 'none';
 		setLaneMode((current) => (current === nextLane ? current : nextLane));
 		setMilestoneFilter(paramMilestone);
+		setBranchFilter(searchParams.get('branch'));
 		if (typeof window !== 'undefined') {
 			window.localStorage.setItem(laneStorageKey, nextLane);
 		}
@@ -70,7 +73,8 @@ export default function BoardPage({
 
 	const handleLaneChange = (mode: LaneMode) => {
 		setLaneMode(mode);
-		setMilestoneFilter(null); // Clear milestone filter when switching lane modes
+		setMilestoneFilter(null);
+		setBranchFilter(null);
 		if (typeof window !== 'undefined') {
 			window.localStorage.setItem(laneStorageKey, mode);
 		}
@@ -80,7 +84,20 @@ export default function BoardPage({
 			} else {
 				params.set('lane', mode);
 			}
-			params.delete('milestone'); // Clear milestone param when switching
+			params.delete('milestone');
+			params.delete('branch');
+			return params;
+		}, { replace: true });
+	};
+
+	const handleBranchFilterChange = (branch: string | null) => {
+		setBranchFilter(branch);
+		setSearchParams(params => {
+			if (branch) {
+				params.set('branch', branch);
+			} else {
+				params.delete('branch');
+			}
 			return params;
 		}, { replace: true });
 	};
@@ -101,6 +118,8 @@ export default function BoardPage({
 				laneMode={laneMode}
 				onLaneChange={handleLaneChange}
 				milestoneFilter={milestoneFilter}
+				branchFilter={branchFilter}
+				onBranchFilterChange={handleBranchFilterChange}
 			/>
 		</div>
 	);
