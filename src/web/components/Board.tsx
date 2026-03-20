@@ -546,6 +546,7 @@ const Board: React.FC<BoardProps> = ({
                             dragSourceLane={dragSourceLane}
                             laneId={lane.key}
                             targetMilestone={laneMode === 'milestone' ? (lane.milestone ?? null) : null}
+                            preventCrossLaneDrop={laneMode === 'branch'}
                             onDragStart={({ status: draggedStatus, laneId }) => {
                               setDragSourceStatus(draggedStatus);
                               setDragSourceLane(laneId ?? null);

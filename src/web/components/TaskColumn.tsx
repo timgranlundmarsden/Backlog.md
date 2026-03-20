@@ -16,6 +16,7 @@ interface TaskColumnProps {
   onCleanup?: () => void;
   laneId?: string;
   targetMilestone?: string | null;
+  preventCrossLaneDrop?: boolean;
 }
 
 const TaskColumn: React.FC<TaskColumnProps> = ({
@@ -30,7 +31,8 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
   onDragEnd,
   onCleanup,
   laneId,
-  targetMilestone
+  targetMilestone,
+  preventCrossLaneDrop
 }) => {
   const [isDragOver, setIsDragOver] = React.useState(false);
   const [draggedTaskId, setDraggedTaskId] = React.useState<string | null>(null);
@@ -59,8 +61,14 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
     
     const droppedTaskId = e.dataTransfer.getData('text/plain');
     const sourceStatus = e.dataTransfer.getData('text/status');
-    
+    const sourceLane = e.dataTransfer.getData('text/lane');
+
     if (!droppedTaskId) return;
+
+    // In branch mode, ignore drops across different lanes
+    if (preventCrossLaneDrop && sourceLane && sourceLane !== (laneId ?? '')) {
+      return;
+    }
     
     if (!onTaskReorder) {
       return;
@@ -126,6 +134,9 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
     }
   };
 
+  // When preventCrossLaneDrop is on, suppress visual cues for cross-lane drags
+  const isCrossLaneBlocked = preventCrossLaneDrop && dragSourceLane != null && dragSourceLane !== (laneId ?? null);
+
   const isEmpty = tasks.length === 0;
 
   return (
@@ -133,7 +144,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
       className={`rounded-lg p-4 transition-colors duration-200 h-full ${
         isEmpty ? 'min-h-24' : 'min-h-96'
       } ${
-        isDragOver && (dragSourceStatus !== title || (dragSourceLane ?? null) !== (laneId ?? null))
+        isDragOver && !isCrossLaneBlocked && (dragSourceStatus !== title || (dragSourceLane ?? null) !== (laneId ?? null))
           ? 'bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-600 border-dashed'
           : isEmpty
             ? 'bg-gray-50/50 dark:bg-gray-800/30 border border-gray-200/50 dark:border-gray-700/50'
@@ -204,7 +215,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
         ))}
         
         {/* Drop zone indicator - only show in different columns */}
-        {isDragOver && dragSourceStatus !== title && (
+        {isDragOver && !isCrossLaneBlocked && dragSourceStatus !== title && (
           <div className="border-2 border-green-400 dark:border-green-500 border-dashed rounded-md bg-green-50 dark:bg-green-900/20 p-4 text-center transition-colors duration-200">
             <div className="text-green-600 dark:text-green-400 text-sm font-medium transition-colors duration-200">
               Drop task here to change status
