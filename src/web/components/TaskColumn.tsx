@@ -46,6 +46,9 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
     if (statusLower.includes('blocked') || statusLower.includes('stuck')) {
       return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 transition-colors duration-200';
     }
+    if (statusLower.includes('review')) {
+      return 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 transition-colors duration-200';
+    }
     return 'bg-stone-100 dark:bg-stone-900 text-stone-800 dark:text-stone-200 transition-colors duration-200';
   };
 

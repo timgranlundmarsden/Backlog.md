@@ -15,6 +15,12 @@ describe("Status Icon Component", () => {
 			expect(style.color).toBe("yellow");
 		});
 
+		test("returns correct style for Ready for Review status", () => {
+			const style = getStatusStyle("Ready for Review");
+			expect(style.icon).toBe("◇");
+			expect(style.color).toBe("magenta");
+		});
+
 		test("returns correct style for Blocked status", () => {
 			const style = getStatusStyle("Blocked");
 			expect(style.icon).toBe("●");
@@ -50,6 +56,7 @@ describe("Status Icon Component", () => {
 		test("returns correct color for each status", () => {
 			expect(getStatusColor("Done")).toBe("green");
 			expect(getStatusColor("In Progress")).toBe("yellow");
+			expect(getStatusColor("Ready for Review")).toBe("magenta");
 			expect(getStatusColor("Blocked")).toBe("red");
 			expect(getStatusColor("To Do")).toBe("white");
 			expect(getStatusColor("Review")).toBe("blue");
@@ -65,6 +72,7 @@ describe("Status Icon Component", () => {
 		test("returns correct icon for each status", () => {
 			expect(getStatusIcon("Done")).toBe("✔");
 			expect(getStatusIcon("In Progress")).toBe("◒");
+			expect(getStatusIcon("Ready for Review")).toBe("◇");
 			expect(getStatusIcon("Blocked")).toBe("●");
 			expect(getStatusIcon("To Do")).toBe("○");
 			expect(getStatusIcon("Review")).toBe("◆");
@@ -80,6 +88,7 @@ describe("Status Icon Component", () => {
 		test("formats status with correct icon", () => {
 			expect(formatStatusWithIcon("Done")).toBe("✔ Done");
 			expect(formatStatusWithIcon("In Progress")).toBe("◒ In Progress");
+			expect(formatStatusWithIcon("Ready for Review")).toBe("◇ Ready for Review");
 			expect(formatStatusWithIcon("Blocked")).toBe("● Blocked");
 			expect(formatStatusWithIcon("To Do")).toBe("○ To Do");
 			expect(formatStatusWithIcon("Review")).toBe("◆ Review");

@@ -1,3 +1,4 @@
+import { DEFAULT_STATUSES } from "../constants/index.ts";
 import type { BacklogConfig } from "../types/index.ts";
 
 /**
@@ -8,7 +9,7 @@ export function migrateConfig(config: Partial<BacklogConfig>): BacklogConfig {
 		projectName: "Untitled Project",
 		defaultEditor: "",
 		defaultStatus: "",
-		statuses: ["To Do", "In Progress", "Done"],
+		statuses: [...DEFAULT_STATUSES],
 		labels: [],
 		dateFormat: "YYYY-MM-DD",
 		maxColumnWidth: 80,

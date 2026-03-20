@@ -113,9 +113,10 @@ Use this as the default brief for each spawned implementation agent:
      - Record concrete verification evidence (commands + outcomes) in notes/final summary
    - Confirm all AC and DoD items are checked
    - Write final summary
-   - Set status to `Done` only after successful verification evidence exists
+   - Set status to `Ready for Review` after successful verification evidence exists and PR is open
    - Open one PR for this task (title: `<taskId> - <taskTitle>`)
-   - If verification is blocked, do not set `Done`; escalate to TPM immediately
+   - Set status to `Done` only after human review/approval/merge
+   - If verification is blocked, do not set `Ready for Review`; escalate to TPM immediately
 10. Report back with:
    - PR link
    - Verification steps run (including user-flow checks)
