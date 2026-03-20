@@ -382,8 +382,12 @@ const Board: React.FC<BoardProps> = ({
       return true;
     }
     // When filtering by branch, collapse non-matching lanes
-    if (branchFilter && (lane?.branch ?? "").trim().toLowerCase() !== branchFilter.trim().toLowerCase()) {
-      return true;
+    if (branchFilter) {
+      if (branchFilter === '__current') {
+        if (!lane?.isNoBranch) return true;
+      } else if ((lane?.branch ?? "").trim().toLowerCase() !== branchFilter.trim().toLowerCase()) {
+        return true;
+      }
     }
     return false;
   };
