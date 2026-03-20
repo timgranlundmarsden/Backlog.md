@@ -1828,20 +1828,25 @@ export class Core {
 		);
 
 		// Filter out any tasks that couldn't be loaded (may have been moved/deleted)
-		const validTasks = loadedTasks.filter((t): t is Task => t !== null);
+		const loadedValidTasks = loadedTasks.filter((t): t is Task => t !== null);
 
 		// Verify the moved task itself exists
-		const movedTask = validTasks.find((t) => t.id === taskId);
+		const movedTask = loadedValidTasks.find((t) => t.id === taskId);
 		if (!movedTask) {
 			throw new Error(`Task ${taskId} not found while reordering`);
 		}
 
 		// Reject reordering tasks from other branches - they can only be modified in their source branch
-		if (movedTask.branch) {
+		if (!isLocalEditableTask(movedTask)) {
 			throw new Error(
 				`Task ${taskId} exists in branch "${movedTask.branch}" and cannot be reordered from the current branch. Switch to that branch to modify it.`,
 			);
 		}
+
+		// Cross-branch tasks are informational only in the board UI. Exclude them from ordinal
+		// calculations and bulk persistence so reordering a local task never materializes a
+		// remote/local-branch task into the current branch.
+		const validTasks = loadedValidTasks.filter((task) => isLocalEditableTask(task));
 
 		const hasTargetMilestone = params.targetMilestone !== undefined;
 		const normalizedTargetMilestone =

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
@@ -154,6 +154,41 @@ describe("Core.reorderTask", () => {
 		expect(task1?.ordinal).toBe(1000);
 		expect(task2?.ordinal).toBe(3000);
 		expect(task3?.ordinal).toBe(2000);
+	});
+
+	it("ignores remote tasks when reordering a local task in a mixed column", async () => {
+		const localTask = { ...buildTask("task-1", "To Do", 1000), id: "TASK-1" };
+		const remoteTask = {
+			...buildTask("task-remote", "To Do", 2000),
+			id: "TASK-REMOTE",
+			source: "remote" as const,
+			branch: "feature/remote",
+		};
+		const localSibling = { ...buildTask("task-2", "To Do", 3000), id: "TASK-2" };
+
+		const getTaskSpy = spyOn(core, "getTask").mockImplementation(async (id: string) => {
+			const tasks = new Map([
+				["TASK-1", localTask],
+				["TASK-REMOTE", remoteTask],
+				["TASK-2", localSibling],
+			]);
+			return tasks.get(id.toUpperCase()) ?? null;
+		});
+		const updateTasksBulkSpy = spyOn(core, "updateTasksBulk").mockResolvedValue();
+
+		const result = await core.reorderTask({
+			taskId: "task-1",
+			targetStatus: "To Do",
+			orderedTaskIds: ["task-remote", "task-1", "task-2"],
+		});
+
+		expect(result.updatedTask.id).toBe("TASK-1");
+		expect(updateTasksBulkSpy).toHaveBeenCalledTimes(1);
+		const [changedTasks] = updateTasksBulkSpy.mock.calls[0] ?? [];
+		const changedTaskIds = (changedTasks as Task[]).map((task) => task.id);
+		expect(changedTaskIds).toContain("TASK-1");
+		expect(changedTaskIds).not.toContain("TASK-REMOTE");
+		expect(getTaskSpy).toHaveBeenCalledTimes(3);
 	});
 
 	it("updates status and ordinal when moving across columns", async () => {
