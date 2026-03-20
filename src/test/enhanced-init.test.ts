@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
+import { DEFAULT_STATUSES } from "../constants/index.ts";
 import { Core } from "../core/backlog.ts";
 import { initializeProject } from "../core/init.ts";
 import type { BacklogConfig } from "../types/index.ts";
@@ -71,7 +72,7 @@ describe("Enhanced init command", () => {
 		expect(config).toBeTruthy();
 		expect(config?.projectName).toBe("New Project");
 		expect(config?.autoCommit).toBe(false); // Default value
-		expect(config?.statuses).toEqual(["To Do", "In Progress", "Done"]);
+		expect(config?.statuses).toEqual([...DEFAULT_STATUSES]);
 		expect(config?.dateFormat).toBe("yyyy-mm-dd");
 	});
 

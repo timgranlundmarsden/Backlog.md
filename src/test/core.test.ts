@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { join } from "node:path";
 import { $ } from "bun";
+import { DEFAULT_STATUSES } from "../constants/index.ts";
 import { Core } from "../core/backlog.ts";
 import type { Document, Task } from "../types/index.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
@@ -40,7 +41,7 @@ describe("Core", () => {
 
 			const config = await core.filesystem.loadConfig();
 			expect(config?.projectName).toBe("Test Project");
-			expect(config?.statuses).toEqual(["To Do", "In Progress", "Done"]);
+			expect(config?.statuses).toEqual([...DEFAULT_STATUSES]);
 			expect(config?.defaultStatus).toBe("To Do");
 		});
 

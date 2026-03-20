@@ -313,6 +313,8 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 		const normalized = (status ?? "").toLowerCase();
 		if (normalized.includes("done") || normalized.includes("complete")) return "#10b981";
 		if (normalized.includes("progress")) return "#3b82f6";
+		if (normalized.includes("blocked") || normalized.includes("stuck")) return "#ef4444";
+		if (normalized.includes("review")) return "#a855f7";
 		return "#6b7280";
 	};
 
@@ -320,6 +322,8 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 		const normalized = status.toLowerCase();
 		if (normalized.includes("done") || normalized.includes("complete")) return "text-emerald-700 dark:text-emerald-300";
 		if (normalized.includes("progress")) return "text-blue-700 dark:text-blue-300";
+		if (normalized.includes("blocked") || normalized.includes("stuck")) return "text-red-700 dark:text-red-300";
+		if (normalized.includes("review")) return "text-purple-700 dark:text-purple-300";
 		return "text-gray-600 dark:text-gray-400";
 	};
 
