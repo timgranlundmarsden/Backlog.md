@@ -194,7 +194,7 @@ export async function viewTaskEnhanced(
 		// Tasks already provided - use in-memory search (no ContentStore loading)
 		allTasks = options.tasks.filter((t) => t.id && t.id.trim() !== "" && hasAnyPrefix(t.id));
 		const config = await core.filesystem.loadConfig();
-		statuses = config?.statuses || ["To Do", "In Progress", "Ready for Review", "Done"];
+		statuses = config?.statuses || ["To Do", "In Progress", "Blocked", "Ready for Review", "Done"];
 		labels = config?.labels || [];
 		taskSearchIndex = createTaskSearchIndex(allTasks);
 	} else {
@@ -203,7 +203,7 @@ export async function viewTaskEnhanced(
 		try {
 			loadingScreen?.update("Loading configuration...");
 			const config = await core.filesystem.loadConfig();
-			statuses = config?.statuses || ["To Do", "In Progress", "Ready for Review", "Done"];
+			statuses = config?.statuses || ["To Do", "In Progress", "Blocked", "Ready for Review", "Done"];
 			labels = config?.labels || [];
 
 			loadingScreen?.update("Loading tasks from branches...");

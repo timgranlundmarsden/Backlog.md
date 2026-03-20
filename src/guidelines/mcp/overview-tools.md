@@ -39,7 +39,7 @@ Each tool returns the same content that resource-capable clients read via `backl
 3. **If not found:** consult `get_task_creation_guide`, then create tasks with `task_create`
 4. **Execute & finalize:** use the execution/finalization guides to manage status, plans, notes, and acceptance criteria via `task_edit`
 
-**Note:** When implementation is complete and awaiting human approval, set status to "Ready for Review". Set "Done" only after approval/merge. "Done" tasks stay in Done until periodic cleanup. Moving to the completed folder (`task_complete`) is a batch operation run occasionally, not part of finishing each task. Do not use `task_archive` for completed work—archive is only for duplicate, canceled, or invalid tasks.
+**Note:** When implementation is complete and awaiting human approval, set status to "Ready for Review". Set "Done" only after approval/merge. If work is blocked on external input, a dependency, or a decision, set status to "Blocked". "Done" tasks stay in Done until periodic cleanup. Moving to the completed folder (`task_complete`) is a batch operation run occasionally, not part of finishing each task. Do not use `task_archive` for completed work—archive is only for duplicate, canceled, or invalid tasks.
 
 ### Core Principle
 

@@ -199,10 +199,7 @@ describe("buildLanes (branch mode)", () => {
 	});
 
 	it("deduplicates branches case-insensitively", () => {
-		const tasks = [
-			makeTask({ id: "task-1", branch: "Main" }),
-			makeTask({ id: "task-2", branch: "main" }),
-		];
+		const tasks = [makeTask({ id: "task-1", branch: "Main" }), makeTask({ id: "task-2", branch: "main" })];
 		const lanes = buildLanes("branch", tasks, []);
 		// Should have Current branch + one branch lane
 		expect(lanes).toHaveLength(2);

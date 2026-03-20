@@ -40,6 +40,7 @@
 - Work in short loops: implement, run the relevant tests, and immediately check off acceptance criteria with `task_edit` (acceptanceCriteriaCheck field) when they are met
 - Log progress with `task_edit` (notesAppend field) to document decisions, blockers, or learnings
 - Keep task status aligned with reality via `task_edit`
+- If work is blocked on external input, a dependency, or a decision, set status to "Blocked" via `task_edit` and document the blocker in notes. Move back to "In Progress" once unblocked
 
 ### Handling Scope Changes
 

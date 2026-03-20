@@ -9,7 +9,7 @@
 5. **Update task status** - Set status to "Ready for Review" via `task_edit` when implementation is complete and awaiting human approval (e.g., PR open). Set status to "Done" only after human review/approval/merge.
 6. **Propose next steps** - Never autonomously create or start new tasks
 
-**Note:** "Ready for Review" means code is complete but not yet approved. "Done" means the work is approved/merged. Tasks stay in "Done" status until periodic cleanup. Moving to the completed folder (`task_complete` or CLI cleanup) is a batch operation run occasionally, not part of finishing each task.
+**Note:** "Ready for Review" means code is complete but not yet approved. "Blocked" means work cannot proceed due to external input, a dependency, or a pending decision. "Done" means the work is approved/merged. Tasks stay in "Done" status until periodic cleanup. Moving to the completed folder (`task_complete` or CLI cleanup) is a batch operation run occasionally, not part of finishing each task.
 
 **Important:** Do not use `task_archive` for completed work. Archive is only for tasks that should not be completed (duplicate, canceled, invalid).
 

@@ -116,7 +116,7 @@ Use this as the default brief for each spawned implementation agent:
    - Set status to `Ready for Review` after successful verification evidence exists and PR is open
    - Open one PR for this task (title: `<taskId> - <taskTitle>`)
    - Set status to `Done` only after human review/approval/merge
-   - If verification is blocked, do not set `Ready for Review`; escalate to TPM immediately
+   - If work is blocked on external input, a dependency, or a decision, set status to `Blocked` and escalate to TPM immediately
 10. Report back with:
    - PR link
    - Verification steps run (including user-flow checks)
