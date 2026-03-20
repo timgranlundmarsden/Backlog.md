@@ -28,6 +28,7 @@ import { apiClient } from './lib/api';
 import { useHealthCheckContext } from './contexts/HealthCheckContext';
 import { getWebVersion } from './utils/version';
 import { collectArchivedMilestoneKeys, collectMilestoneIds, milestoneKey } from './utils/milestones';
+import { consumePendingRefresh, createPendingRefreshState, queuePendingRefresh, type RefreshMode } from './utils/modal-refresh-queue';
 
 const buildMilestoneAliasMap = (milestones: Milestone[], archivedMilestones: Milestone[]): Map<string, string> => {
   const aliasMap = new Map<string, string>();
@@ -187,6 +188,12 @@ function App() {
   const { isOnline } = useHealthCheckContext();
   const previousOnlineRef = useRef<boolean | null>(null);
   const hasBeenRunningRef = useRef(false);
+  const showModalRef = useRef(false);
+  const pendingRefreshRef = useRef(createPendingRefreshState());
+
+  useEffect(() => {
+    showModalRef.current = showModal;
+  }, [showModal]);
 
   // Set version data attribute on body
   React.useEffect(() => {
@@ -296,34 +303,53 @@ function App() {
     }
   }, [loadAllData, isInitialized]);
 
+  const runReactiveRefresh = useCallback(async () => {
+    try {
+      const [results, milestonesData, archivedMilestonesData] = await Promise.all([
+        apiClient.search(),
+        apiClient.fetchMilestones(),
+        apiClient.fetchArchivedMilestones(),
+      ]);
+      const archivedKeys = new Set(collectArchivedMilestoneKeys(archivedMilestonesData, milestonesData));
+      const milestoneAliases = buildMilestoneAliasMap(milestonesData, archivedMilestonesData);
+      const { tasks: tasksList } = applySearchResults(results, archivedKeys, milestoneAliases);
+      setMilestoneEntities(milestonesData);
+      setArchivedMilestones(archivedMilestonesData);
+      setMilestones(
+        collectMilestoneIds(tasksList, milestonesData, archivedMilestonesData).filter(
+          (milestone) => !archivedKeys.has(milestoneKey(milestone)),
+        ),
+      );
+    } catch (error) {
+      console.error('Failed to reload data:', error);
+    }
+  }, [applySearchResults]);
+
+  const runRefreshMode = useCallback((mode: RefreshMode) => {
+    if (mode === "full") {
+      void loadAllData();
+      return;
+    }
+
+    void runReactiveRefresh();
+  }, [loadAllData, runReactiveRefresh]);
+
+  const queueOrRunReactiveRefresh = useCallback((mode: RefreshMode = "reactive") => {
+    if (showModalRef.current) {
+      pendingRefreshRef.current = queuePendingRefresh(pendingRefreshRef.current, mode);
+      return;
+    }
+
+    runRefreshMode(mode);
+  }, [runRefreshMode]);
+
   // Reload data when connection is restored
   React.useEffect(() => {
     if (isOnline && previousOnlineRef.current === false) {
       // Connection restored, reload data
-      const loadData = async () => {
-        try {
-          const [results, milestonesData, archivedMilestonesData] = await Promise.all([
-            apiClient.search(),
-            apiClient.fetchMilestones(),
-            apiClient.fetchArchivedMilestones(),
-          ]);
-          const archivedKeys = new Set(collectArchivedMilestoneKeys(archivedMilestonesData, milestonesData));
-          const milestoneAliases = buildMilestoneAliasMap(milestonesData, archivedMilestonesData);
-          const { tasks: tasksList } = applySearchResults(results, archivedKeys, milestoneAliases);
-          setMilestoneEntities(milestonesData);
-          setArchivedMilestones(archivedMilestonesData);
-          setMilestones(
-            collectMilestoneIds(tasksList, milestonesData, archivedMilestonesData).filter(
-              (milestone) => !archivedKeys.has(milestoneKey(milestone)),
-            ),
-          );
-        } catch (error) {
-          console.error('Failed to reload data:', error);
-        }
-      };
-      loadData();
+      queueOrRunReactiveRefresh('reactive');
     }
-  }, [applySearchResults, isOnline]);
+  }, [isOnline, queueOrRunReactiveRefresh]);
 
   // Update document title when project name changes
   React.useEffect(() => {
@@ -382,6 +408,19 @@ function App() {
     setIsDraftMode(false);
   };
 
+  useEffect(() => {
+    if (showModal) {
+      return;
+    }
+
+    const { mode, nextState } = consumePendingRefresh(pendingRefreshRef.current);
+    pendingRefreshRef.current = nextState;
+
+    if (mode) {
+      runRefreshMode(mode);
+    }
+  }, [showModal, runRefreshMode]);
+
   const refreshData = useCallback(async () => {
     await loadAllData();
   }, [loadAllData]);
@@ -402,17 +441,19 @@ function App() {
     const ws = new WebSocket(`${protocol}//${window.location.host}`);
     ws.onmessage = (event) => {
       if (event.data === "tasks-updated") {
-        refreshData();
+        queueOrRunReactiveRefresh('reactive');
       } else if (event.data === "config-updated") {
-        // Reload statuses when config changes
-        loadAllData();
+        queueOrRunReactiveRefresh('full');
       } else if (event.data === "remote-sync") {
+        if (showModalRef.current) {
+          return;
+        }
         setSyncing(true);
         setTimeout(() => setSyncing(false), 1500);
       }
     };
     return () => ws.close();
-  }, [refreshData, loadAllData]);
+  }, [queueOrRunReactiveRefresh]);
 
   const handleSubmitTask = async (taskData: Partial<Task>) => {
     // Don't catch errors here - let TaskDetailsModal handle them
