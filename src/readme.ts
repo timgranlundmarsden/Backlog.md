@@ -29,7 +29,11 @@ export async function updateReadmeWithBoard(tasks: Task[], statuses: string[], p
 	const tableStartIndex = lines.findIndex(
 		(line) =>
 			line.includes("|") &&
-			(line.includes("To Do") || line.includes("In Progress") || line.includes("Done") || line.includes("---")),
+			(line.includes("To Do") ||
+				line.includes("In Progress") ||
+				line.includes("Blocked") ||
+				line.includes("Done") ||
+				line.includes("---")),
 	);
 	const boardTable = lines.slice(tableStartIndex).join("\n").trim();
 

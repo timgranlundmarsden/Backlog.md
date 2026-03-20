@@ -1074,7 +1074,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 const StatusSelect: React.FC<{ current: string; onChange: (v: string) => void; disabled?: boolean }> = ({ current, onChange, disabled }) => {
   const [statuses, setStatuses] = useState<string[]>([]);
   useEffect(() => {
-    apiClient.fetchStatuses().then(setStatuses).catch(() => setStatuses(["To Do", "In Progress", "Ready for Review", "Done"]));
+    apiClient.fetchStatuses().then(setStatuses).catch(() => setStatuses(["To Do", "In Progress", "Blocked", "Ready for Review", "Done"]));
   }, []);
   return (
     <select

@@ -287,6 +287,12 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 		if (normalized.includes("progress")) {
 			return "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300";
 		}
+		if (normalized.includes("blocked") || normalized.includes("stuck")) {
+			return "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300";
+		}
+		if (normalized.includes("review")) {
+			return "bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300";
+		}
 		return "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300";
 	};
 
