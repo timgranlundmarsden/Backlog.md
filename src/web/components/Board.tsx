@@ -351,11 +351,22 @@ const Board: React.FC<BoardProps> = ({
     return Math.round((done / total) * 100);
   };
 
-  // Filter out empty lanes in milestone/branch mode
+  // Filter out empty lanes in milestone/branch mode, and hide non-matching
+  // lanes entirely when a branch or milestone filter is active
   const visibleLanes = useMemo(() => {
     if (laneMode !== 'milestone' && laneMode !== 'branch') return lanes;
-    return lanes.filter(l => laneTaskCount(l.key) > 0);
-  }, [laneMode, lanes, tasksByLane]);
+    return lanes.filter(l => {
+      if (laneTaskCount(l.key) <= 0) return false;
+      if (laneMode === 'branch' && branchFilter) {
+        if (branchFilter === '__current') return !!l.isNoBranch;
+        return (l.branch ?? "").trim().toLowerCase() === branchFilter.trim().toLowerCase();
+      }
+      if (laneMode === 'milestone' && milestoneFilter) {
+        return canonicalizeMilestone(l.milestone) === canonicalMilestoneFilter;
+      }
+      return true;
+    });
+  }, [laneMode, lanes, tasksByLane, branchFilter, milestoneFilter, canonicalMilestoneFilter]);
 
   // Only show lane headers when multiple lanes exist
   const shouldShowLaneHeaders = useMemo(() => {
