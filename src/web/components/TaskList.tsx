@@ -634,7 +634,7 @@ const TaskList: React.FC<TaskListProps> = ({
 	}, [currentCount]);
 
 	return (
-		<div className="w-full max-w-[1800px] mx-auto px-4 py-8 transition-colors duration-200">
+		<div className="w-full px-4 py-8 transition-colors duration-200">
 			<div className="flex flex-col gap-4 mb-6">
 				<div className="flex items-center justify-between gap-3">
 						<h1 className="text-2xl font-bold text-gray-900 dark:text-white">All Tasks</h1>

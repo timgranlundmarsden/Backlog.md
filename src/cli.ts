@@ -11,7 +11,7 @@ import { type CompletionInstallResult, installCompletion, registerCompletionComm
 import { configureAdvancedSettings } from "./commands/configure-advanced-settings.ts";
 import { registerMcpCommand } from "./commands/mcp.ts";
 import { pickTaskForEditWizard, runTaskCreateWizard, runTaskEditWizard } from "./commands/task-wizard.ts";
-import { DEFAULT_DIRECTORIES, DEFAULT_FILES } from "./constants/index.ts";
+import { DEFAULT_DIRECTORIES, DEFAULT_FILES, DEFAULT_STATUSES } from "./constants/index.ts";
 import { initializeProject } from "./core/init.ts";
 import { buildMilestoneBuckets, collectArchivedMilestoneKeys, milestoneKey } from "./core/milestones.ts";
 import { computeSequences } from "./core/sequences.ts";
@@ -2844,7 +2844,7 @@ milestoneCmd
 			core.filesystem.loadConfig(),
 		]);
 
-		const statuses = config?.statuses ?? ["To Do", "In Progress", "Done"];
+		const statuses = config?.statuses ?? [...DEFAULT_STATUSES];
 		const archivedMilestoneIds = collectArchivedMilestoneKeys(archivedMilestones, milestones);
 		const buckets = buildMilestoneBuckets(tasks, milestones, statuses, { archivedMilestoneIds, archivedMilestones });
 		const active = buckets.filter((bucket) => !bucket.isNoMilestone && !bucket.isCompleted);

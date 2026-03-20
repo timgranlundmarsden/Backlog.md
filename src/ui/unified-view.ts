@@ -2,6 +2,7 @@
  * Unified view manager that handles Tab switching between task views and kanban board
  */
 
+import { DEFAULT_STATUSES } from "../constants/index.ts";
 import type { Core } from "../core/backlog.ts";
 import type { Milestone, Task } from "../types/index.ts";
 import { watchConfig } from "../utils/config-watcher.ts";
@@ -133,7 +134,7 @@ export async function loadTasksForUnifiedView(
 		const config = await core.filesystem.loadConfig();
 		return {
 			tasks: options.tasks,
-			statuses: config?.statuses || ["To Do", "In Progress", "Done"],
+			statuses: config?.statuses || [...DEFAULT_STATUSES],
 		};
 	}
 
@@ -144,7 +145,7 @@ export async function loadTasksForUnifiedView(
 			const config = await core.filesystem.loadConfig();
 			return {
 				tasks,
-				statuses: config?.statuses || ["To Do", "In Progress", "Done"],
+				statuses: config?.statuses || [...DEFAULT_STATUSES],
 			};
 		});
 

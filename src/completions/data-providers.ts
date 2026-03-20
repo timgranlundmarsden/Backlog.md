@@ -1,3 +1,4 @@
+import { DEFAULT_STATUSES } from "../constants/index.ts";
 import { Core } from "../index.ts";
 import type { BacklogConfig } from "../types/index.ts";
 
@@ -23,7 +24,7 @@ async function withCore<T>(callback: CoreCallback<T>, fallback: T): Promise<T> {
 }
 
 function getDefaultStatuses(): string[] {
-	return ["To Do", "In Progress", "Done"];
+	return [...DEFAULT_STATUSES];
 }
 
 /**

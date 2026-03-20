@@ -103,7 +103,7 @@ export default function BoardPage({
 	};
 
 	return (
-		<div className="w-full max-w-[1800px] mx-auto px-4 py-8 transition-colors duration-200">
+		<div className="w-full px-4 py-8 transition-colors duration-200">
 			<Board
 				onEditTask={handleEditTask}
 				onNewTask={onNewTask}

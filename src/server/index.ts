@@ -1,6 +1,7 @@
 import { dirname, join } from "node:path";
 import type { Server, ServerWebSocket } from "bun";
 import { $ } from "bun";
+import { DEFAULT_STATUSES } from "../constants/index.ts";
 import { Core } from "../core/backlog.ts";
 import type { ContentStore } from "../core/content-store.ts";
 import { initializeProject } from "../core/init.ts";
@@ -1009,7 +1010,7 @@ export class BacklogServer {
 
 	private async handleGetStatuses(): Promise<Response> {
 		const config = await this.core.filesystem.loadConfig();
-		const statuses = config?.statuses || ["To Do", "In Progress", "Done"];
+		const statuses = config?.statuses || [...DEFAULT_STATUSES];
 		return Response.json(statuses);
 	}
 

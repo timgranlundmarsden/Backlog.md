@@ -5,7 +5,7 @@ import {
 	ensureMcpGuidelines,
 	installClaudeAgent,
 } from "../agent-instructions.ts";
-import { DEFAULT_INIT_CONFIG } from "../constants/index.ts";
+import { DEFAULT_INIT_CONFIG, DEFAULT_STATUSES } from "../constants/index.ts";
 import type { BacklogConfig } from "../types/index.ts";
 import { normalizeProjectBacklogDirectory } from "../utils/backlog-directory.ts";
 import type { Core } from "./backlog.ts";
@@ -100,7 +100,7 @@ export async function initializeProject(
 	const d = DEFAULT_INIT_CONFIG;
 	const baseConfig: BacklogConfig = {
 		projectName,
-		statuses: ["To Do", "In Progress", "Done"],
+		statuses: [...DEFAULT_STATUSES],
 		labels: [],
 		defaultStatus: "To Do",
 		dateFormat: "yyyy-mm-dd",
