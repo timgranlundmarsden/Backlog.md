@@ -6,10 +6,10 @@
 2. **Run the Definition of Done checklist** (see below)
 3. **Write the Final Summary** - Use `task_edit` (`finalSummary` field) to capture a PR-style summary of what changed and why. Avoid one-line summaries unless the change is trivial; include tests and key scope for reviewers.
 4. **Confirm the implementation plan is captured and current** - Update the plan in Backlog if the executed approach deviated
-5. **Update task status** - Set status to "Done" via `task_edit`
+5. **Update task status** - Set status to "Ready for Review" via `task_edit` when implementation is complete and awaiting human approval (e.g., PR open). Set status to "Done" only after human review/approval/merge.
 6. **Propose next steps** - Never autonomously create or start new tasks
 
-**Note:** Tasks stay in "Done" status until periodic cleanup. Moving to the completed folder (`task_complete` or CLI cleanup) is a batch operation run occasionally, not part of finishing each task.
+**Note:** "Ready for Review" means code is complete but not yet approved. "Done" means the work is approved/merged. Tasks stay in "Done" status until periodic cleanup. Moving to the completed folder (`task_complete` or CLI cleanup) is a batch operation run occasionally, not part of finishing each task.
 
 **Important:** Do not use `task_archive` for completed work. Archive is only for tasks that should not be completed (duplicate, canceled, invalid).
 
@@ -22,7 +22,7 @@
 - Documentation or configuration updates completed when required
 - Implementation notes capture progress during work via `task_edit` (notesAppend field)
 - Final Summary captures the PR-style completion summary via `task_edit` (`finalSummary` field). Include what changed, why, tests run, and any risks/follow-ups when relevant.
-- Status transitions to "Done" via `task_edit`
+- Status transitions to "Ready for Review" via `task_edit` (or "Done" if human approval is already granted)
 
 ### After Finalization
 

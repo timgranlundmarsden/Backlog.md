@@ -14,6 +14,7 @@ export function getStatusStyle(status: string): StatusStyle {
 	const statusMap: Record<string, StatusStyle> = {
 		Done: { icon: "✔", color: "green" },
 		"In Progress": { icon: "◒", color: "yellow" },
+		"Ready for Review": { icon: "◇", color: "magenta" },
 		Blocked: { icon: "●", color: "red" },
 		"To Do": { icon: "○", color: "white" },
 		Review: { icon: "◆", color: "blue" },

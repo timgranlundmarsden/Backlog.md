@@ -52,7 +52,7 @@ Backlog tracks **commitments** (what will be built). Use your judgment to distin
 
 ### MCP Tools Quick Reference
 
-**Note:** "Done" tasks stay in the Done column until periodic cleanup moves them to the completed folder. Don't use `task_complete` immediately after finishing—it's for batch cleanup, not per-task workflow.
+**Note:** When implementation is complete and awaiting human approval, set status to "Ready for Review". Set "Done" only after approval/merge. "Done" tasks stay in the Done column until periodic cleanup moves them to the completed folder. Don't use `task_complete` immediately after finishing—it's for batch cleanup, not per-task workflow.
 
 - `task_list` — list tasks with optional filtering by status, assignee, or labels
 - `task_search` — search tasks by title and description

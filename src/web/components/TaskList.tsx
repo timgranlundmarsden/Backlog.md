@@ -474,6 +474,8 @@ const TaskList: React.FC<TaskListProps> = ({
 				return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200";
 			case "in progress":
 				return "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200";
+			case "ready for review":
+				return "bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200";
 			case "done":
 				return "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200";
 			default:
@@ -632,7 +634,7 @@ const TaskList: React.FC<TaskListProps> = ({
 	}, [currentCount]);
 
 	return (
-		<div className="container mx-auto px-4 py-8 transition-colors duration-200">
+		<div className="w-full max-w-[1800px] mx-auto px-4 py-8 transition-colors duration-200">
 			<div className="flex flex-col gap-4 mb-6">
 				<div className="flex items-center justify-between gap-3">
 						<h1 className="text-2xl font-bold text-gray-900 dark:text-white">All Tasks</h1>
@@ -732,7 +734,7 @@ const TaskList: React.FC<TaskListProps> = ({
 						{showLabelsMenu && (
 							<div
 								ref={labelsMenuRef}
-								className="absolute z-10 mt-2 w-[220px] max-h-56 overflow-y-auto rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg"
+								className="absolute z-20 mt-2 w-[220px] max-h-56 overflow-y-auto rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg"
 							>
 								{mergedAvailableLabels.length === 0 ? (
 									<div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">No labels</div>

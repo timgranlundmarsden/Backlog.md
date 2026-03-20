@@ -43,7 +43,7 @@ export const DEFAULT_FILES = {
 /**
  * Default task statuses
  */
-export const DEFAULT_STATUSES = ["To Do", "In Progress", "Done"] as const;
+export const DEFAULT_STATUSES = ["To Do", "In Progress", "Ready for Review", "Done"] as const;
 
 /**
  * Fallback status when no default is configured
