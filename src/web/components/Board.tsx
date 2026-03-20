@@ -190,7 +190,11 @@ const Board: React.FC<BoardProps> = ({
       result = result.filter(task => canonicalizeMilestone(task.milestone) === canonicalMilestoneFilter);
     }
     if (branchFilter) {
-      result = result.filter(task => (task.branch ?? "").trim().toLowerCase() === branchFilter.trim().toLowerCase());
+      if (branchFilter === '__current') {
+        result = result.filter(task => !task.branch || task.branch.trim() === '');
+      } else {
+        result = result.filter(task => (task.branch ?? "").trim().toLowerCase() === branchFilter.trim().toLowerCase());
+      }
     }
     return result;
   }, [tasks, milestoneFilter, canonicalMilestoneFilter, milestoneAliasToCanonical, branchFilter]);
@@ -463,6 +467,7 @@ const Board: React.FC<BoardProps> = ({
               className="px-3 py-1.5 text-sm font-medium rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-colors duration-200"
             >
               <option value="">All branches</option>
+              <option value="__current">Current branch</option>
               {uniqueBranches.map(b => (
                 <option key={b} value={b}>{b}</option>
               ))}
