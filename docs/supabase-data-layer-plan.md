@@ -58,7 +58,12 @@ Create a `SupabaseStorage` class with the same public API as `FileSystem`, backe
 | `parent_task_id` | TEXT | |
 | `priority` | TEXT | high/medium/low |
 | `ordinal` | NUMERIC | |
-| `markdown_body` | TEXT | everything below frontmatter |
+| `description` | TEXT | ## Description section |
+| `implementation_plan` | TEXT | ## Implementation Plan section |
+| `implementation_notes` | TEXT | ## Implementation Notes section |
+| `final_summary` | TEXT | ## Final Summary section |
+| `acceptance_criteria` | JSONB | `[{text, checked}]` — checkbox items |
+| `definition_of_done` | JSONB | `[{text, checked}]` — checkbox items |
 
 Instead of separate directories (tasks/, completed/, archive/, drafts/), the `category` column distinguishes state. `archiveTask` = UPDATE category to 'archived'. `completeTask` = UPDATE category to 'completed'.
 
@@ -97,9 +102,13 @@ New `src/supabase/storage.ts` implements `StorageInterface`:
 | `loadConfig()` | SELECT from configs table |
 | ... | (same pattern for milestones, decisions, documents) |
 
-**Read flow (DB → Task):** Query returns columns + `markdown_body`. Structured fields come directly from columns. Body sections (description, AC, DoD, notes) parsed from `markdown_body` using existing section parser.
+**Read flow (DB → Task):** Query returns all columns. Map directly to Task object fields — no markdown parsing needed. AC/DoD come back as JSONB arrays of `{text, checked}`.
 
-**Write flow (Task → DB):** Extract frontmatter fields into columns. Serialize body sections into `markdown_body` using existing serializer (strip frontmatter portion).
+**Write flow (Task → DB):** Map Task object fields directly to columns — no markdown serialization needed. AC/DoD checklist items stored as JSONB arrays.
+
+**Migration flow (file → DB):** Uses existing markdown parser to extract sections from files, then maps each section to its column. This is the only place the parser is needed for Supabase mode.
+
+**Export flow (DB → file):** Uses existing markdown serializer to reconstruct the full markdown file from columns. This is the only place the serializer is needed for Supabase mode.
 
 ### 5. ContentStore Adaptation
 
