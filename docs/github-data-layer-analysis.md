@@ -239,22 +239,44 @@ Supabase eliminates this entirely: description, implementation_plan, implementat
 - Atomic updates, full SQL queries
 - One new dependency (`@supabase/supabase-js`)
 
-### Potential Hybrid: GitHub Issues + Supabase
+### Recommended Hybrid: Supabase + File Sync to Git
 
-If keeping data "next to the code" matters, a hybrid could work:
+The right architecture isn't "Supabase OR files" — it's both, with clear roles:
 
-- **Supabase** is the primary store (structured, fast, realtime)
-- **GitHub Issues** created as a read-only mirror for visibility (link in task metadata)
-- Status changes synced bidirectionally via webhook
+- **Supabase** is the realtime source of truth. Agents read/write here for instant cross-agent coordination. Realtime subscriptions push changes.
+- **Markdown files on disk** are synced from Supabase. They get committed alongside the code, so `git log` shows task state evolving with the implementation. The repo is a self-contained knowledge archive.
 
-This gives the best of both worlds but adds sync complexity.
+This is "everything as code" — the code and its context (tasks, decisions, plans) travel together in version control — while still having a proper realtime database for live coordination.
 
 ---
 
 ## Recommendation
 
-GitHub's data model is designed for **issue tracking**, not for **structured project management with custom schemas**. The 50-field limit, lack of array types, mandatory body parsing, and absence of atomic updates make it a compromised choice compared to a proper database.
+**Use Supabase as the realtime coordination layer. Sync task state to markdown files on disk so diffs are checked in with the code.**
 
-**Use Supabase as the centralized store. Optionally sync to GitHub Issues for visibility.**
+### Why This Hybrid Wins
 
-If zero-new-dependencies is an absolute hard requirement, GitHub Projects V2 _can_ work, but expect to write and maintain a significant parsing/mapping layer that recreates many of the problems the centralized store was meant to solve.
+| Concern | How It's Addressed |
+|---|---|
+| Cross-agent realtime coordination | Supabase Realtime (WebSocket push) |
+| Structured queries and atomic updates | Postgres via Supabase |
+| Knowledge lives with the code | Markdown files committed to git |
+| Git history tells the full story | Task diffs appear alongside code diffs |
+| Offline / local-first reading | Files on disk — always available |
+| No body-parsing on the hot path | Supabase columns for structured fields |
+
+### Sync Design (High Level)
+
+1. **Supabase → Disk**: After any Supabase write, regenerate the affected task's markdown file and stage it. This can happen in the CLI/MCP layer after mutations.
+2. **Disk → Supabase** (optional): On startup or git pull, detect local file changes and upsync to Supabase. This supports manual file edits and works when Supabase was unreachable.
+3. **Conflict resolution**: Supabase `updated_at` timestamp wins. If a local file is newer than the DB row, prompt or merge. Keep it simple — in practice, agents write via Supabase and humans rarely hand-edit task files.
+
+### What This Means for GitHub
+
+GitHub Issues and Projects V2 are **not needed as the data layer**. They remain useful for what they're designed for:
+
+- **GitHub Issues**: Bug reports from external users, public feature requests
+- **GitHub Projects**: Kanban views for visual planning (can be populated from Supabase via API if desired)
+- **PRs**: Link to task IDs in commit messages / PR descriptions (already supported)
+
+The analysis above stands as reference for why GitHub's data model doesn't fit as a structured task store. The hybrid approach avoids those limitations entirely while keeping the "data next to code" benefit through file sync.
