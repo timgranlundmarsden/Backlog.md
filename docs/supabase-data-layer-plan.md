@@ -104,16 +104,20 @@ New `src/supabase/storage.ts` implements `StorageInterface`:
 ### 5. ContentStore Adaptation
 
 - `patchFilesystem` interception pattern still works (same method names)
-- File watchers replaced with Supabase Realtime subscriptions in supabase mode
-- `refreshFromDisk` → `refreshFromDb` (same logic: load all, diff, notify)
+- File watchers remain for local mode; Supabase Realtime subscriptions added as an alternative path in supabase mode
+- `refreshFromDisk` stays as-is; a parallel `refreshFromDb` method added for supabase mode (same logic: load all, diff, notify)
 
-### 6. What Gets Eliminated/Simplified
+### 6. What Gets Bypassed in Supabase Mode
 
-- **TaskLoader** (724 lines) — no-ops in Supabase mode. No branches to search.
-- **Git auto-commit for data changes** — DB is source of truth, no files to commit
-- **Cross-branch conflict resolution** — gone
-- **`source` field complexity** — always "local" equivalent, everything is centralized
-- **Remote operations config** — irrelevant
+Since both storage modes coexist permanently, no existing code is removed. The following code paths are simply **skipped** when `storage: "supabase"` is active:
+
+- **TaskLoader** (724 lines) — cross-branch loading is skipped (early return), but the code stays for local mode users
+- **Git auto-commit for data changes** — skipped since DB is source of truth, but remains for local mode
+- **Cross-branch task resolution** — skipped, but code remains intact
+- **`source` field on tasks** — always set to a default value, but the field and its handling remain
+- **File watchers in ContentStore** — not started in Supabase mode, but the code remains for local mode
+
+**Nothing is deleted.** Local mode is a permanent first-class citizen.
 
 ### 7. The `openInEditor` Problem
 
@@ -142,11 +146,12 @@ Reverse command: `backlog export-to-files` — dumps DB back to markdown files (
 | **4. Remaining entities** | Milestones, decisions, documents, config in SupabaseStorage | `src/supabase/storage.ts` | Low |
 | **5. ContentStore realtime** | Supabase Realtime subscriptions instead of file watchers | `src/core/content-store.ts`, `src/supabase/realtime.ts` (new) | Medium |
 | **6. Editor flow** | Temp-file pattern for openInEditor | `src/core/backlog.ts` | Low |
-| **7. Simplify cross-branch** | Skip TaskLoader in supabase mode | `src/core/backlog.ts` | Low |
+| **7. Bypass cross-branch** | Add early returns to skip TaskLoader/cross-branch paths in supabase mode (code stays for local mode) | `src/core/backlog.ts` | Low |
 | **8. Migration command** | `migrate-to-supabase` + `export-to-files` CLI commands | `src/supabase/migration.ts` (new), `src/cli.ts` | Low |
 
 **Estimated new code:** ~1,500 LOC
 **Estimated modified code:** ~140 LOC across existing files
+**No existing files deleted** — all local-mode code remains fully functional
 **New dependency:** `@supabase/supabase-js`
 
 ---
