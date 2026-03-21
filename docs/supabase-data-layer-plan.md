@@ -11,18 +11,50 @@
 ### Architecture
 
 ```
-Agents/MCP/CLI ──write──► Supabase (realtime source of truth)
-                              │
-                              ▼
-                     Sync to disk (markdown files)
-                              │
-                              ▼
-                     git commit alongside code
+    Branch A (Agent 1)          Branch B (Agent 2)          Branch C (Human)
+         │                           │                           │
+    edit file on disk           edit file on disk           edit file on disk
+         │                           │                           │
+         ▼                           ▼                           ▼
+    ┌─────────┐                ┌─────────┐                ┌─────────┐
+    │ watcher │                │ watcher │                │ watcher │
+    └────┬────┘                └────┬────┘                └────┬────┘
+         │                           │                           │
+         └───────────┬───────────────┘───────────────────────────┘
+                     ▼
+              ┌─────────────┐
+              │  Supabase   │◄──── Web Dashboard (Vercel)
+              │  (realtime  │         read + write
+              │   hub)      │
+              └──────┬──────┘
+                     │  Realtime subscriptions push changes
+         ┌───────────┼───────────────┐───────────────────────────┐
+         ▼           ▼               ▼                           ▼
+    sync to disk  sync to disk  sync to disk              Web Dashboard
+    (Branch A)    (Branch B)    (Branch C)              (live updates)
+         │           │               │
+         ▼           ▼               ▼
+    git commit    git commit    git commit
+    with code     with code     with code
 ```
 
-- **Supabase** is where all reads and writes happen. Agents get instant cross-agent visibility via Realtime subscriptions.
-- **Markdown files on disk** are regenerated after each Supabase write. They get committed alongside implementation code, so `git log` shows task evolution with the code. The repo is a self-contained knowledge archive.
+**Supabase is a bidirectional realtime sync hub across all branches.** Every branch has markdown files on disk as the editing surface. Changes flow both ways:
+
+- **Disk → Supabase:** File watcher detects local edits, parses the file, writes to Supabase
+- **Supabase → Disk:** Realtime subscription receives changes from other branches/agents, writes updated markdown file to disk
+
+The files are the same files as today — same format, same directory structure. Supabase is the invisible coordination layer that keeps them all in sync across branches.
+
 - **Local-only mode** remains a first-class citizen (no Supabase needed for single-user/offline workflows).
+
+### Web Dashboard
+
+Since Supabase is the realtime source of truth, a web UI (e.g. on Vercel) can connect directly to Supabase:
+
+- **Read:** Live task board, kanban views, status dashboards — all powered by Supabase queries + Realtime subscriptions for live updates
+- **Write:** Full edit experience — create tasks, update status, edit fields. Changes flow through Supabase → Realtime → every connected branch's file watcher → files updated on disk
+- **Auth:** Supabase Auth or RLS with API keys — same auth model as CLI/MCP
+- **No file parsing needed:** The web UI reads/writes structured columns, never touches markdown
 
 ### Why Not GitHub Issues/Projects V2?
 
@@ -35,17 +67,19 @@ Evaluated in detail in `docs/github-data-layer-analysis.md`. Summary: GitHub's d
 ### Option A: Replace FileSystem entirely (no local files)
 **Rejected.** Loses git history of task changes, breaks offline workflows, and removes the "everything as code" benefit where task context travels with the codebase.
 
-### Option B: Supabase + File Sync to Git (Recommended)
-Supabase is the realtime source of truth. After every write, the affected task's markdown file is regenerated on disk. Files get committed with the code. The sync is primarily unidirectional (Supabase → disk), keeping complexity low.
+### Option B: Supabase as Bidirectional Realtime Sync Hub (Recommended)
+Supabase is the realtime coordination layer. Files on disk remain the editing surface — same format, same directories. Sync is bidirectional: local file edits push to Supabase, Supabase changes (from other branches, web UI, other agents) pull to local files. Optimistic locking prevents collisions.
 
 **Why this works:**
 - Both CLI and MCP already flow through `Core.fs` (a single `FileSystem` instance)
 - `FileSystem` has ~38 public methods — the interface is well-defined
-- Existing markdown parser/serializer reused for the sync-to-disk step
+- Existing markdown parser/serializer reused for both sync directions
 - **724 lines of cross-branch task loading code (`TaskLoader`) become unnecessary** — Supabase eliminates cross-branch coordination
-- ContentStore file watchers can be replaced with Supabase Realtime subscriptions
+- ContentStore file watchers already exist — extend them to push to Supabase on change
+- Supabase Realtime subscriptions pull changes from other branches/agents to disk
 - Git history preserved — task diffs appear alongside code diffs
 - Offline reading always works — files are on disk
+- Web dashboard gets full read/write access to all task data via Supabase
 
 ---
 
@@ -135,8 +169,20 @@ New `src/supabase/storage.ts` implements `StorageInterface`:
 ### 5. ContentStore Adaptation
 
 - `patchFilesystem` interception pattern still works (same method names)
-- File watchers remain for local mode; Supabase Realtime subscriptions added as an alternative path in supabase mode
-- `refreshFromDisk` stays as-is; a parallel `refreshFromDb` method added for supabase mode (same logic: load all, diff, notify)
+- File watchers serve dual purpose in Supabase mode: detect local edits → push to Supabase, AND receive Realtime updates → write to disk
+- `refreshFromDisk` stays as-is for initial load
+- Supabase Realtime subscription handles ongoing sync — when another branch/agent/web UI changes a task, the subscription fires, the file is updated on disk, and ContentStore picks up the change
+
+### How Changes From Supabase Reach Each Branch
+
+Different entry points have different notification mechanisms:
+
+| Entry Point | How It Receives Supabase Changes |
+|---|---|
+| **MCP server** (long-running process) | Supabase Realtime subscription — WebSocket push. Changes arrive instantly, file written to disk. |
+| **CLI** (short-lived process) | Startup reconciliation — on every command, quick check of `updated_at` timestamps against local files. Pull any changes before executing. Fast because it's a single query. |
+| **Web Dashboard** (browser) | Supabase Realtime subscription — live updates in the UI. No files involved. |
+| **File watcher** (if running, e.g. via MCP) | Receives file changes written by the Realtime subscription handler. Ignores self-writes via echo loop prevention flag. |
 
 ### 6. File Sync Layer
 
@@ -180,7 +226,8 @@ Since both storage modes coexist permanently, no existing code is removed. The f
 - **Git auto-commit for data changes** — skipped since DB is source of truth, but remains for local mode
 - **Cross-branch task resolution** — skipped, but code remains intact
 - **`source` field on tasks** — always set to a default value, but the field and its handling remain
-- **File watchers in ContentStore** — not started in Supabase mode, but the code remains for local mode
+
+File watchers are **NOT bypassed** — they're extended. In Supabase mode, file watchers detect local edits and push to Supabase (instead of just updating in-memory state). They also ignore writes from the Realtime subscription handler to prevent echo loops.
 
 **Nothing is deleted.** Local mode is a permanent first-class citizen.
 
@@ -214,8 +261,9 @@ Reverse command: `backlog export-to-files` — dumps DB back to markdown files (
 | **7. ContentStore realtime** | Supabase Realtime subscriptions instead of file watchers | `src/core/content-store.ts`, `src/supabase/realtime.ts` (new) | Medium |
 | **8. Bypass cross-branch** | Add early returns to skip TaskLoader/cross-branch paths in supabase mode (code stays for local mode) | `src/core/backlog.ts` | Low |
 | **9. Migration command** | `migrate-to-supabase` + `export-to-files` CLI commands | `src/supabase/migration.ts` (new), `src/cli.ts` | Low |
+| **10. Web Dashboard** | Vercel-hosted UI reading/writing Supabase directly. Reuse existing browser UI components with Supabase client instead of MCP. | Separate package or deploy target | Medium — separate concern |
 
-**Estimated new code:** ~1,500 LOC
+**Estimated new code:** ~1,800 LOC (sync layer adds ~300 LOC over original estimate)
 **Estimated modified code:** ~140 LOC across existing files
 **No existing files deleted** — all local-mode code remains fully functional
 **New dependency:** `@supabase/supabase-js`
@@ -224,18 +272,20 @@ Reverse command: `backlog export-to-files` — dumps DB back to markdown files (
 
 ## Tradeoffs & Considerations
 
-| Aspect | Local (current) | Supabase + File Sync |
-|--------|----------------|----------------------|
-| Offline editing | Works | Reading works (files on disk). Writing requires network. |
-| Branch coordination | Required (the pain point) | Eliminated — Supabase is branch-independent |
+| Aspect | Local (current) | Supabase + Bidirectional Sync |
+|--------|----------------|-------------------------------|
+| Offline editing | Works | Reading works (files on disk). Writing queues until network returns. |
+| Branch coordination | Required (the pain point) | Eliminated — Supabase syncs across all branches in realtime |
 | Setup complexity | Zero | Supabase project + env var |
 | Query performance | Load-all-then-filter | SQL WHERE clauses |
-| Real-time updates | File watchers | Supabase Realtime |
+| Real-time updates | File watchers (local only) | Supabase Realtime (cross-branch, cross-agent, cross-UI) |
 | Data portability | Markdown files in repo | Markdown files in repo (synced from Supabase) |
 | Git history of tasks | Automatic | **Preserved** — file sync means task diffs commit with code |
 | Knowledge archive | Files in repo | Files in repo (same — everything as code) |
+| Web dashboard | MCP-dependent | Direct Supabase connection — full read/write, live updates |
+| Editing surface | Markdown files | Markdown files (same) + web UI + any Supabase client |
 
-**Key benefit:** You keep git history of task changes AND gain centralized, branch-independent access for all agents. The sync-to-disk step preserves the "everything as code" model.
+**Key benefit:** You keep git history of task changes AND gain centralized, branch-independent access for all agents. Every branch gets changes from every other branch in realtime. A web dashboard gets full read/write access for free.
 
 **Design decision:** Both storage modes coexist permanently as a config switch. Local files remain the default for open-source/single-user workflows. Supabase is opt-in for teams/multi-agent workflows. Both are first-class citizens.
 
